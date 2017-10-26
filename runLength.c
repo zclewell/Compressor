@@ -34,10 +34,8 @@ void convertIntToChar(char* str, int n){
 }
 
 char* encode(char* line){
-  // initially assume string will have no consecutive characters
-  // memory will be reallocated as needed
   char* front = line;
-
+  // initiall assume worst case for how much memory is needed, realloc in the end
   char* result = malloc(2 * strlen(line) + 1);
   size_t currentSize = 2 * strlen(line) + 1;
   result[strlen(line)] = 0;
@@ -54,22 +52,10 @@ char* encode(char* line){
       ++temp;
       ++count;
     }
-    // realloc space if needed
-    if(resultIndex + numDigits(count) >= currentSize - 1){
-      int bytesAvailable = currentSize - resultIndex - 2;
-      // guess how much memory will be needed for rest of string
-      size_t charsRemaining = line - front - 1;
-      size_t neededMemGuess = 2 * charsRemaining;
-
-      result = realloc(result, currentSize + numDigits(count) - bytesAvailable + neededMemGuess);
-      currentSize += numDigits(count) - bytesAvailable + 2;
-      result[currentSize - 1] = 0;
-    }
 
     result[resultIndex++] = c;
     convertIntToChar(result + resultIndex, count);
     resultIndex += numDigits(count);
-
     line = temp;
   }
 
