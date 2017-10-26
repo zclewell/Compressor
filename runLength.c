@@ -127,6 +127,4 @@ int main(){
   assert(!strcmp(encoded3, "m10 2"));
   assert(!strcmp(bigStr, decode(encoded3)));
 
-
-
 }
