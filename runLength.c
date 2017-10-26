@@ -14,7 +14,8 @@ int numDigits(int n){
   }
   return count;
 }
-
+// this function is not needed, sprintf can be used
+/*
 // string representation of int n, each digit is a character
 // string is filled into pointer str
 void convertIntToChar(char* str, int n){
@@ -31,7 +32,7 @@ void convertIntToChar(char* str, int n){
     n/= 10;
   }
 
-}
+}(*/
 
 char* encode(char* line){
   char* front = line;
@@ -54,7 +55,8 @@ char* encode(char* line){
     }
 
     result[resultIndex++] = c;
-    convertIntToChar(result + resultIndex, count);
+    //convertIntToChar(result + resultIndex, count);
+    sprintf(result + resultIndex, "%lu", count);
     resultIndex += numDigits(count);
     line = temp;
   }
