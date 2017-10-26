@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 int numBytesNeeded(int n){
   int count = 0;
@@ -33,7 +34,6 @@ char* encode(char* line){
   result[strlen(line)] = 0;
   size_t resultIndex = 0;
 
-  size_t i;
   while(*line){
     char c = *line;
     char* temp = line;
@@ -67,9 +67,10 @@ char* encode(char* line){
 }
 
 char* decode(char* str){
-  size_t i;
   size_t totalLength = 0;
-  char* temp = str;
+  char* tmp = str;
+  int* charRepeatCount = malloc(sizeof(int) * strlen(str));
+  int indexRepeatCount = -1;
   // figure out length of string
   while(*tmp){
     char* num = tmp + 1;
@@ -80,18 +81,30 @@ char* decode(char* str){
     char saved = *endOfNum;
     *endOfNum = 0;
     int repeat = atoi(num);
+    charRepeatCount[++indexRepeatCount] = repeat;
     *endOfNum = saved;
     totalLength += repeat;
     tmp = endOfNum;
   }
 
+
   char* result = malloc(totalLength + 1);
   // fill in result string
+  size_t i;
+  size_t index = 0;
+  for(i = 0; i <= indexRepeatCount; ++i){
+    int count = charRepeatCount[i];
+    char charToRepeat = *str;
+    size_t j = 0;
+    for(j; j < count; ++i){
+      result[index++] = charToRepeat;
+    }
+    str += numBytesNeeded(count) + 1;
+  }
 
 
-
-
-
+  free(charRepeatCount);
+  return result;
 
 }
 
@@ -101,4 +114,5 @@ char* decode(char* str){
 int main(){
   char* test = strdup("hello");
   printf("%s\n",encode(test));
+  printf("%s\n",decode(encode(test)));
 }
