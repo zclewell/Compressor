@@ -36,6 +36,8 @@ void convertIntToChar(char* str, int n){
 char* encode(char* line){
   // initially assume string will have no consecutive characters
   // memory will be reallocated as needed
+  char* front = line;
+
   char* result = malloc(2 * strlen(line) + 1);
   size_t currentSize = 2 * strlen(line) + 1;
   result[strlen(line)] = 0;
@@ -55,8 +57,11 @@ char* encode(char* line){
     // realloc space if needed
     if(resultIndex + numDigits(count) >= currentSize - 1){
       int bytesAvailable = currentSize - resultIndex - 2;
-      // allocate two extra bytes than needed, for next iteration
-      result = realloc(result, currentSize + numDigits(count) - bytesAvailable + 2);
+      // guess how much memory will be needed for rest of string
+      size_t charsRemaining = line - front - 1;
+      size_t neededMemGuess = 2 * charsRemaining;
+
+      result = realloc(result, currentSize + numDigits(count) - bytesAvailable + neededMemGuess);
       currentSize += numDigits(count) - bytesAvailable + 2;
       result[currentSize - 1] = 0;
     }
@@ -77,7 +82,7 @@ char* decode(char* str){
   size_t totalLength = 0;
   char* tmp = str;
   // this int array stores how many time each character is repeated
-  // is in same order as encded string
+  // is in same order as encded string, memory allocated is upper bound for number of characters that are repeated
   int* charRepeatCount = malloc(sizeof(int) * strlen(str) / 2);
   int indexRepeatCount = -1;
   // figure out length of string
@@ -111,10 +116,8 @@ char* decode(char* str){
     str += numDigits(count) + 1;
   }
 
-
   free(charRepeatCount);
   return result;
-
 }
 
 // basic tests, checks if encoded string is correct, and decoded ( encoeded) = original string
