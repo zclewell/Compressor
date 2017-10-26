@@ -96,7 +96,7 @@ char* decode(char* str){
     int count = charRepeatCount[i];
     char charToRepeat = *str;
     size_t j = 0;
-    for(j; j < count; ++i){
+    for(j; j < count; ++j){
       result[index++] = charToRepeat;
     }
     str += numBytesNeeded(count) + 1;
@@ -107,8 +107,6 @@ char* decode(char* str){
   return result;
 
 }
-
-
 
 
 int main(){
