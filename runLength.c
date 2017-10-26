@@ -4,7 +4,9 @@
 #include <ctype.h>
 #include <assert.h>
 
-int numBytesNeeded(int n){
+
+
+int numDigits(int n){
   int count = 0;
   while(n){
     n/= 10;
@@ -13,13 +15,15 @@ int numBytesNeeded(int n){
   return count;
 }
 
+// string representation of int n, each digit is a character
+// string is filled into pointer str
 void convertIntToChar(char* str, int n){
   if(n < 10){
     *str = n + '0';
     return;
   }
   size_t i;
-  str += numBytesNeeded(n) - 1;
+  str += numDigits(n) - 1;
   while(n){
     int digit = n % 10;
     *str = digit + '0';
@@ -30,8 +34,10 @@ void convertIntToChar(char* str, int n){
 }
 
 char* encode(char* line){
-  char* result = malloc(strlen(line) + 1);
-  size_t currentSize = strlen(line) + 1;
+  // initially assume string will have no consecutive characters
+  // memory will be reallocated as needed
+  char* result = malloc(2 * strlen(line) + 1);
+  size_t currentSize = 2 * strlen(line) + 1;
   result[strlen(line)] = 0;
   size_t resultIndex = 0;
 
@@ -47,17 +53,17 @@ char* encode(char* line){
       ++count;
     }
     // realloc space if needed
-    if(resultIndex + numBytesNeeded(count) >= currentSize - 1){
+    if(resultIndex + numDigits(count) >= currentSize - 1){
       int bytesAvailable = currentSize - resultIndex - 2;
       // allocate two extra bytes than needed, for next iteration
-      result = realloc(result, currentSize + numBytesNeeded(count) - bytesAvailable + 2);
-      currentSize += numBytesNeeded(count) - bytesAvailable + 2;
+      result = realloc(result, currentSize + numDigits(count) - bytesAvailable + 2);
+      currentSize += numDigits(count) - bytesAvailable + 2;
       result[currentSize - 1] = 0;
     }
 
     result[resultIndex++] = c;
     convertIntToChar(result + resultIndex, count);
-    resultIndex += numBytesNeeded(count);
+    resultIndex += numDigits(count);
 
     line = temp;
   }
@@ -70,7 +76,9 @@ char* encode(char* line){
 char* decode(char* str){
   size_t totalLength = 0;
   char* tmp = str;
-  int* charRepeatCount = malloc(sizeof(int) * strlen(str));
+  // this int array stores how many time each character is repeated
+  // is in same order as encded string
+  int* charRepeatCount = malloc(sizeof(int) * strlen(str) / 2);
   int indexRepeatCount = -1;
   // figure out length of string
   while(*tmp){
@@ -100,7 +108,7 @@ char* decode(char* str){
     for(j; j < count; ++j){
       result[index++] = charToRepeat;
     }
-    str += numBytesNeeded(count) + 1;
+    str += numDigits(count) + 1;
   }
 
 
