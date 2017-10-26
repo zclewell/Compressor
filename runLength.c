@@ -6,6 +6,7 @@
 
 
 
+
 int numDigits(int n){
   int count = 0;
   while(n){
@@ -32,11 +33,11 @@ void convertIntToChar(char* str, int n){
     n/= 10;
   }
 
-}(*/
+}*/
 
 char* encode(char* line){
   char* front = line;
-  // initiall assume worst case for how much memory is needed, realloc in the end
+  // initially assume worst case for how much memory is needed, realloc in the end
   char* result = malloc(2 * strlen(line) + 1);
   size_t currentSize = 2 * strlen(line) + 1;
   result[strlen(line)] = 0;
