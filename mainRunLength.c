@@ -34,16 +34,21 @@ void* encodeLine(void* arg){
   return NULL;
 }
 
+#define USAGE "usage: %s mode(1 for compress 2 for decomress) input_file outout_file [num_threads]\n"
+#define MODE  "Mode is 1 to compress input file 2 to decomress inut file\n"
+#define FILE_ERROR "Could not open file %s\n"
+#define THREAD_ERROR "Could not create thread\n"
+
 
 int main(int argc, char**argv){
-  if(argc < 2){
-    fprintf(stderr, "usage compress: %s mode(1 for compress 2 for decompress) input_file outout_file [num_threads]\n",argv[0]);
+  if(argc < 4){
+    fprintf(stderr, USAGE, argv[0]);
     exit(1);
   }
 
   int mode = atoi(argv[1]);
   if(mode != 1 || mode != 2){
-    fprintf(stderr, "mode is 1 to compress input file 2 is to decompress input file decompress");
+    fprintf(stderr, MODE);
     exit(1);
   }
 
@@ -55,15 +60,15 @@ int main(int argc, char**argv){
   pthread_mutex_init(&lock, 0);
   queue = queue_create(-1);
   results = string_vector_create();
-  size_t num_threads = 0;
-  if(argc >= 3){
-    num_threads = atoi(argv[3]);
+  size_t num_threads = 1;
+  if(argc >= 5){
+    num_threads = atoi(argv[4]);
   }
 
   FILE* input = fopen(argv[2], "r");
-  if(!file){
-    printf("file does not exist\n");
-    return 0;
+  if(!input){
+    fprintf(stderr, FILE_ERROR, argv[2]);
+    exit(1);
   }
 
   size_t i;
@@ -71,7 +76,7 @@ int main(int argc, char**argv){
   for(i = 0; i < num_threads; ++i){
     int t = pthread_create(threads + i, 0, encodeLine, fun);
     if(!t){
-      fprintf(stderr, "Count not create thread\n");
+      fprintf(stderr, THREAD_ERROR);
       exit(1);
     }
   }
@@ -109,6 +114,4 @@ int main(int argc, char**argv){
   pthread_mutex_destroy(&lock);
   vector_destroy(results);
   queue_destroy(queue);
-
-
 }
