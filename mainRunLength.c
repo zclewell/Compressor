@@ -1,5 +1,7 @@
 #include "queue.h"
-#include <runLength.c>
+#include "runLength.c"
+#include "vector.h"
+
 #include <pthread.h>
 
 
@@ -9,19 +11,17 @@ typedef struct{
   size_t lineNo;
 } fileLine;
 
-typedef char* (char*)func;
+typedef char* (*coder)(char*);
 
 
 pthread_mutex_t lock;
-
-
-queue* queue;
+queue* codingData;
 vector* results;
 
 void* encodeLine(void* arg){
-  func* function = (func*)arg;
+  coder* code = (coder*)arg;
   fileLine* data;
-  while((data = queue_pull(queue))){
+  while((data = queue_pull(codingData))){
     size_t lineNum = data->lineNo;
     char* encodedLine = encode(data->line);
     pthread_mutex_lock(&lock);
@@ -30,7 +30,7 @@ void* encodeLine(void* arg){
     free(data->line);
     free(data);
   }
-  queue_push(NULL);
+  queue_push(codingData, NULL);
   return NULL;
 }
 
@@ -52,13 +52,13 @@ int main(int argc, char**argv){
     exit(1);
   }
 
-  func* fun = encode;
+  coder* coder_func = (coder*)encode;
   if(mode == 2){
-    fun = decode;
+    coder_func = (coder*)decode;
   }
 
   pthread_mutex_init(&lock, 0);
-  queue = queue_create(-1);
+  codingData = queue_create(-1);
   results = string_vector_create();
   size_t num_threads = 1;
   if(argc >= 5){
@@ -74,7 +74,7 @@ int main(int argc, char**argv){
   size_t i;
   pthread_t threads[num_threads];
   for(i = 0; i < num_threads; ++i){
-    int t = pthread_create(threads + i, 0, encodeLine, fun);
+    int t = pthread_create(threads + i, 0, encodeLine, coder_func);
     if(!t){
       fprintf(stderr, THREAD_ERROR);
       exit(1);
@@ -86,17 +86,17 @@ int main(int argc, char**argv){
   char* line = NULL;
   size_t n = 0;
   size_t lineNum = 0;
-  while((bytesRead = getline(in, line, n)) != -1){
+  while((bytesRead = getline(&line, &n, input)) != -1){
     if(line[bytesRead - 1] == '\n'){
       line[bytesRead - 1] = 0;
     }
     fileLine* temp = malloc(sizeof(fileLine));
     temp->lineNo = lineNum++;
     temp->line = strdup(line);
-    queue_push(queue, temp);
+    queue_push(codingData, temp);
   }
   free(line);
-  queue_push(NULL);
+  queue_push(codingData, NULL);
 
 
   for(i = 0;i < num_threads; ++i){
@@ -113,6 +113,6 @@ int main(int argc, char**argv){
   //clean up
   pthread_mutex_destroy(&lock);
   vector_destroy(results);
-  queue_destroy(queue);
+  queue_destroy(codingData);
   return 0;
 }
