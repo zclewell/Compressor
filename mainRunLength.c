@@ -23,7 +23,9 @@ void* encodeLine(){
   while((data = queue_pull(queue))){
     size_t lineNum = data->lineNo;
     char* encodedLine = encode(data->line);
+    pthread_mutex_lock(&lock);
     vector_set(results, lineNum, encodeLine);
+    pthread_mutex_unlock(&lock);
     free(data->line);
     free(data);
   }
@@ -32,11 +34,10 @@ void* encodeLine(){
 }
 
 
-
-
 int main(int argc, char**argv){
   if(argc < 2){
-    fprintf(stderr, "usage compress: %s input_file outout_file [num_threads]\n",argv[0]);
+
+    fprintf(stderr, "usage compress: %s mode(1 for compress 2 for decompress) input_file outout_file [num_threads]\n",argv[0]);
     return 0;
   }
 
@@ -45,10 +46,10 @@ int main(int argc, char**argv){
   results = string_vector_create();
   size_t num_threads = 0;
   if(argc >= 3){
-    num_threads = atoi(argv[2]);
+    num_threads = atoi(argv[3]);
   }
 
-  FILE* file = fopen(argv[1], "r");
+  FILE* file = fopen(argv[2], "r");
   if(!file){
     printf("file does not exist\n");
     return 0;
@@ -64,7 +65,7 @@ int main(int argc, char**argv){
     }
   }
 
-  FILE*in = fopen(argv[1], "r");
+  //FILE*in = fopen(argv[3], "w");
   size_t bytesRead;
   char* line = NULL;
   size_t n = 0;
@@ -92,12 +93,6 @@ int main(int argc, char**argv){
 
 
   //TODO clean up memory
-
-
-
-
-
-
 
 
 
