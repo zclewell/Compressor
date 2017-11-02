@@ -110,8 +110,9 @@ int main(int argc, char**argv){
   }
 
 
-  //TODO clean
+  //clean up
   pthread_mutex_destroy(&lock);
   vector_destroy(results);
   queue_destroy(queue);
+  return 0;
 }
