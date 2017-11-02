@@ -4,6 +4,12 @@
 #include <ctype.h>
 #include <assert.h>
 
+
+/*
+* Returns the number of digits in a number
+* @param n number for which number of digits is calculated
+* @return number of digits in n
+*/
 int numDigits(int n){
   int count = 0;
   while(n){
@@ -13,6 +19,11 @@ int numDigits(int n){
   return count;
 }
 
+/*
+* Encodes a string using run length encoding
+* @parm line the string that is encoded
+* @return encoded string, allocated on heap
+*/
 char* encode(char* line){
   char* front = line;
   // initially assume worst case for how much memory is needed, realloc in the end
@@ -45,6 +56,11 @@ char* encode(char* line){
   return result;
 }
 
+/*
+* Decodes a string encoded with run length encoding
+* @param str string that is decoded
+* @return decoded string, is allocated on heap
+*/
 char* decode(char* str){
   size_t totalLength = 0;
   char* tmp = str;
@@ -67,7 +83,6 @@ char* decode(char* str){
     totalLength += repeat;
     tmp = endOfNum;
   }
-
 
   char* result = malloc(totalLength + 1);
   // fill in result string
