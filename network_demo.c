@@ -22,6 +22,15 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Fd for: %s opened at: %d\n", address,fd);
 }
 
+/*
+*
+*   PARAM:
+*       address: internet address of file you want to download
+*   RETURN:
+*       int with value of filedescriptor where we can now read from
+*
+*/
+
 int get_non_local_fd(char* address) {
     pid_t child = fork();
     int debug_file = open("debug.info", O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | O_CLOEXEC);
