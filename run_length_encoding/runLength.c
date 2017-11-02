@@ -4,9 +4,6 @@
 #include <ctype.h>
 #include <assert.h>
 
-
-
-
 int numDigits(int n){
   int count = 0;
   while(n){
