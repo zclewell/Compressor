@@ -1,4 +1,4 @@
-#include <runLength.c>	
+#include "runLength.c"	
 
 // basic tests, checks if encoded string is correct, and decoded ( encoeded) = original string
 int main(){
