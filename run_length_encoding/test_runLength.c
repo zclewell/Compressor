@@ -1,3 +1,5 @@
+#include <runLength.c>	
+
 // basic tests, checks if encoded string is correct, and decoded ( encoeded) = original string
 int main(){
   char* test1 = strdup("hello");
