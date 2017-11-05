@@ -1,7 +1,6 @@
 #include "queue.h"
 #include "runLength.c"
-#include "vector.h"
-
+#include <glib.h>
 #include <pthread.h>
 
 
@@ -16,7 +15,7 @@ typedef char* (*coder)(char*);
 
 pthread_mutex_t lock;
 queue* codingData;
-vector* results;
+GPtrArray* results;
 
 void* encodeLine(void* arg){
   coder* code = (coder*)arg;
@@ -25,7 +24,7 @@ void* encodeLine(void* arg){
     size_t lineNum = data->lineNo;
     char* encodedLine = encode(data->line);
     pthread_mutex_lock(&lock);
-    vector_set(results, lineNum, encodeLine);
+    g_ptr_array_insert(results, lineNum, encodeLine);
     pthread_mutex_unlock(&lock);
     free(data->line);
     free(data);
@@ -59,7 +58,7 @@ int main(int argc, char**argv){
 
   pthread_mutex_init(&lock, 0);
   codingData = queue_create(-1);
-  results = string_vector_create();
+  results = g_ptr_array_new();
   size_t num_threads = 1;
   if(argc >= 5){
     num_threads = atoi(argv[4]);
@@ -105,14 +104,14 @@ int main(int argc, char**argv){
 
   FILE* out = fopen(argv[2],"w");
   for(i = 0; i < lineNum; ++i){
-    char* resLine = vector_get(results, i);
+    char* resLine = g_ptr_array_index(results, i);
     fprintf(out, "%s\n", resLine);
   }
 
 
   //clean up
   pthread_mutex_destroy(&lock);
-  vector_destroy(results);
+  g_ptr_array_free(results, TRUE);
   queue_destroy(codingData);
   return 0;
 }
