@@ -1,6 +1,6 @@
-#include "queue.h"
 #include "runLength.c"
 #include <glib.h>
+#include <stdlib.h>
 #include <pthread.h>
 
 
@@ -10,26 +10,34 @@ typedef struct{
   size_t lineNo;
 } fileLine;
 
+
+void fileLineDestructor(fileLine* fileLine){
+  free(fileLine->line);
+  free(fileLine);
+}
+
+
 typedef char* (*coder)(char*);
 
-
 pthread_mutex_t lock;
-queue* codingData;
+GAsyncQueue* codingData;
 GPtrArray* results;
 
+char finished[1];
+
+
 void* encodeLine(void* arg){
-  coder* code = (coder*)arg;
+  coder code = (coder)arg;
   fileLine* data;
-  while((data = queue_pull(codingData))){
+  while((data = g_async_queue_pop(codingData)) != finished){
     size_t lineNum = data->lineNo;
-    char* encodedLine = encode(data->line);
+    char* codedLine = code(data->line);
     pthread_mutex_lock(&lock);
-    g_ptr_array_insert(results, lineNum, encodeLine);
+    g_ptr_array_insert(results, lineNum, codedLine);
     pthread_mutex_unlock(&lock);
-    free(data->line);
-    free(data);
+    //g_async_queue_unref (codingData);
   }
-  queue_push(codingData, NULL);
+  g_async_queue_push(codingData, finished);
   return NULL;
 }
 
@@ -46,18 +54,18 @@ int main(int argc, char**argv){
   }
 
   int mode = atoi(argv[1]);
-  if(mode != 1 || mode != 2){
+  if(mode != 1 && mode != 2){
     fprintf(stderr, MODE);
     exit(1);
   }
 
-  coder* coder_func = (coder*)encode;
+  coder coder_func = (coder)encode;
   if(mode == 2){
-    coder_func = (coder*)decode;
+    coder_func = (coder)decode;
   }
 
   pthread_mutex_init(&lock, 0);
-  codingData = queue_create(-1);
+  codingData = g_async_queue_new_full((GDestroyNotify)fileLineDestructor);
   results = g_ptr_array_new();
   size_t num_threads = 1;
   if(argc >= 5){
@@ -74,7 +82,7 @@ int main(int argc, char**argv){
   pthread_t threads[num_threads];
   for(i = 0; i < num_threads; ++i){
     int t = pthread_create(threads + i, 0, encodeLine, coder_func);
-    if(!t){
+    if(t){
       fprintf(stderr, THREAD_ERROR);
       exit(1);
     }
@@ -92,26 +100,25 @@ int main(int argc, char**argv){
     fileLine* temp = malloc(sizeof(fileLine));
     temp->lineNo = lineNum++;
     temp->line = strdup(line);
-    queue_push(codingData, temp);
+    g_async_queue_push(codingData, temp);
   }
   free(line);
-  queue_push(codingData, NULL);
+  g_async_queue_push(codingData, finished);
 
 
   for(i = 0;i < num_threads; ++i){
     pthread_join(threads[i], 0);
   }
 
-  FILE* out = fopen(argv[2],"w");
+  FILE* out = fopen(argv[3],"w");
   for(i = 0; i < lineNum; ++i){
     char* resLine = g_ptr_array_index(results, i);
     fprintf(out, "%s\n", resLine);
   }
 
-
   //clean up
   pthread_mutex_destroy(&lock);
   g_ptr_array_free(results, TRUE);
-  queue_destroy(codingData);
+  //g_async_queue_unref (codingData);
   return 0;
 }
