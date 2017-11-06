@@ -23,7 +23,9 @@ pthread_mutex_t lock;
 GAsyncQueue* codingData;
 GPtrArray* results;
 
-char finished[1];
+// dummy variable pushed onto queue to tell threads to exit
+// GAsyncQueue doesnt let you push NULL
+fileLine finished[1];
 
 
 void* encodeLine(void* arg){
@@ -35,7 +37,6 @@ void* encodeLine(void* arg){
     pthread_mutex_lock(&lock);
     g_ptr_array_insert(results, lineNum, codedLine);
     pthread_mutex_unlock(&lock);
-    //g_async_queue_unref (codingData);
   }
   g_async_queue_push(codingData, finished);
   return NULL;
@@ -66,7 +67,7 @@ int main(int argc, char**argv){
 
   pthread_mutex_init(&lock, 0);
   codingData = g_async_queue_new_full((GDestroyNotify)fileLineDestructor);
-  results = g_ptr_array_new();
+  results = g_ptr_array_new_with_free_func((GDestroyNotify)free);
   size_t num_threads = 1;
   if(argc >= 5){
     num_threads = atoi(argv[4]);
@@ -95,7 +96,12 @@ int main(int argc, char**argv){
   size_t lineNum = 0;
   while((bytesRead = getline(&line, &n, input)) != -1){
     if(line[bytesRead - 1] == '\n'){
-      line[bytesRead - 1] = 0;
+      // windows ends lines with \r\n
+      if(bytesRead - 2 < strlen(line) && line[bytesRead - 2] == '\r'){
+        line[bytesRead - 2] = 0;
+      } else{
+        line[bytesRead - 1] = 0;
+      }
     }
     fileLine* temp = malloc(sizeof(fileLine));
     temp->lineNo = lineNum++;
@@ -104,7 +110,6 @@ int main(int argc, char**argv){
   }
   free(line);
   g_async_queue_push(codingData, finished);
-
 
   for(i = 0;i < num_threads; ++i){
     pthread_join(threads[i], 0);
@@ -119,6 +124,5 @@ int main(int argc, char**argv){
   //clean up
   pthread_mutex_destroy(&lock);
   g_ptr_array_free(results, TRUE);
-  //g_async_queue_unref (codingData);
   return 0;
 }
