@@ -1,4 +1,4 @@
-#include "runLength.c"	
+#include "runLength.c"
 
 // basic tests, checks if encoded string is correct, and decoded ( encoeded) = original string
 int main(){
@@ -18,5 +18,8 @@ int main(){
   char* encoded3 = encode(bigStr);
   assert(!strcmp(encoded3, "m10 2"));
   assert(!strcmp(bigStr, decode(encoded3)));
+
+  char* failedCase = strdup("while((bytesRead = getline(&line, &n, fp)) != -1){");
+  char* encodeFailed = encode(failedCase);
 
 }
