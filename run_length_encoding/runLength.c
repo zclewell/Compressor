@@ -45,7 +45,6 @@ char* encode(char* line){
     }
 
     result[resultIndex++] = c;
-    //convertIntToChar(result + resultIndex, count);
     sprintf(result + resultIndex, "%lu", count);
     resultIndex += numDigits(count);
     line = temp;
@@ -91,8 +90,8 @@ char* decode(char* str){
   for(i = 0; i <= indexRepeatCount; ++i){
     int count = charRepeatCount[i];
     char charToRepeat = *str;
-    size_t j = 0;
-    for(j; j < count; ++j){
+    size_t j;
+    for(j = 0; j < count; ++j){
       result[index++] = charToRepeat;
     }
     str += numDigits(count) + 1;
