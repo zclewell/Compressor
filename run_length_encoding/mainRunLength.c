@@ -33,6 +33,10 @@ void* encodeLine(void* arg){
   fileLine* data;
   while((data = g_async_queue_pop(codingData)) != finished){
     size_t lineNum = data->lineNo;
+    if (!strlen(data->line)){
+      g_ptr_array_insert(results, lineNum, strdup("\n"));
+      continue;
+    }
     char* codedLine = code(data->line);
     pthread_mutex_lock(&lock);
     g_ptr_array_insert(results, lineNum, codedLine);
@@ -95,16 +99,14 @@ int main(int argc, char**argv){
   size_t n = 0;
   size_t lineNum = 0;
   while((bytesRead = getline(&line, &n, input)) != -1){
-    if(line[bytesRead - 1] == '\n'){
-      // windows ends lines with \r\n
-      if(bytesRead - 2 < strlen(line) && line[bytesRead - 2] == '\r'){
-        line[bytesRead - 2] = 0;
-      } else{
-        line[bytesRead - 1] = 0;
-      }
-    }
     fileLine* temp = malloc(sizeof(fileLine));
     temp->lineNo = lineNum++;
+    if(line[bytesRead - 1] == '\n'){
+      if(strlen(line) >= 2 && line[bytesRead - 2] == '\r') {
+        line[bytesRead - 2] = 0;
+      }
+      line[bytesRead - 1] = 0;
+    }
     temp->line = strdup(line);
     g_async_queue_push(codingData, temp);
   }
@@ -118,7 +120,11 @@ int main(int argc, char**argv){
   FILE* out = fopen(argv[3],"w");
   for(i = 0; i < lineNum; ++i){
     char* resLine = g_ptr_array_index(results, i);
-    fprintf(out, "%s\n", resLine);
+    if(!strcmp(resLine, "\n")){
+      fprintf(out, "\n");
+    } else{
+      fprintf(out, "%s\n", resLine);
+    }
   }
 
   //clean up
