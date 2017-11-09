@@ -19,7 +19,11 @@ int main(){
   assert(!strcmp(encoded3, "m10 2"));
   assert(!strcmp(bigStr, decode(encoded3)));
 
-  char* failedCase = strdup("while((bytesRead = getline(&line, &n, fp)) != -1){");
-  char* encodeFailed = encode(failedCase);
+  // this case is currently failing
+  //TODO come up with escaping system to differentiate literal number
+  char* mixCase = strdup("xyz = -1");
+  //assert(!strcmp("a1=1/1/1/", encode(mixCase)));
+  char* decoded = decode(encode(mixCase));
+  assert(!strcmp(decoded, mixCase));
 
 }
