@@ -26,6 +26,7 @@ int decoder::main(const vector<string>& args)
     decodeFile(args[1], args[2], args[3]);
     return 0;
 }
+de
 
 void decoder::printUsage(const string& programName)
 {
