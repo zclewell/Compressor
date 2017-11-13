@@ -18,5 +18,4 @@ void populateDictionary(GHashTable* table, char* str){
     str[j] = saved;
     i = j;
   }
-
 }
