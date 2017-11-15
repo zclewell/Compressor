@@ -27,8 +27,8 @@ int numDigits(int n){
 char* encode(char* line){
   char* front = line;
   // initially assume worst case for how much memory is needed, realloc in the end
-  char* result = malloc(2 * strlen(line) + 1);
-  size_t currentSize = 2 * strlen(line) + 1;
+  char* result = malloc(5 * strlen(line) + 1);
+  size_t currentSize = 5 * strlen(line) + 1;
   result[strlen(line)] = 0;
   size_t resultIndex = 0;
 
@@ -44,9 +44,16 @@ char* encode(char* line){
       ++count;
     }
 
-    result[resultIndex++] = c;
-    sprintf(result + resultIndex, "%lu", count);
-    resultIndex += numDigits(count);
+    int charsWritten;
+    if(isdigit(c)){
+      charsWritten = sprintf(result + resultIndex,"/%c/%lu/", c, count);
+    } else if(c == '/'){
+      charsWritten = sprintf(result + resultIndex, "//%lu", count);
+    } else{
+      charsWritten = sprintf(result + resultIndex, "%c%lu", c, count);
+    }
+
+    resultIndex += charsWritten;
     line = temp;
   }
 
@@ -69,8 +76,17 @@ char* decode(char* str){
   int indexRepeatCount = -1;
   // figure out length of string
   while(*tmp){
+    int escaped = 0;
     char* num = tmp + 1;
-    char* endOfNum = num;
+    if(*tmp == '/'){
+      escaped = 1;
+      ++num;
+      if(*num == '/'){
+        ++num;
+      }
+    }
+
+    char* endOfNum = num + 1;
     while(isdigit(*endOfNum)){
       ++endOfNum;
     }
@@ -81,6 +97,9 @@ char* decode(char* str){
     *endOfNum = saved;
     totalLength += repeat;
     tmp = endOfNum;
+    if(escaped){
+      ++tmp;
+    }
   }
 
   char* result = malloc(totalLength + 1);
@@ -90,11 +109,18 @@ char* decode(char* str){
   for(i = 0; i <= indexRepeatCount; ++i){
     int count = charRepeatCount[i];
     char charToRepeat = *str;
+    int escapeIncrement = 0;
+    if(charToRepeat == '/'){
+      if(*(str + 1) != '/'){
+        charToRepeat = *(++str);
+      }
+      escapeIncrement = 2;
+    }
     size_t j;
     for(j = 0; j < count; ++j){
       result[index++] = charToRepeat;
     }
-    str += numDigits(count) + 1;
+    str += numDigits(count) + 1 + escapeIncrement;
   }
 
   free(charRepeatCount);

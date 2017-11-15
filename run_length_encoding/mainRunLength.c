@@ -39,6 +39,9 @@ void* encodeLine(void* arg){
     }
     char* codedLine = code(data->line);
     pthread_mutex_lock(&lock);
+    if(lineNum + 1 > results->len){
+      g_ptr_array_set_size(results, lineNum + 1);
+    }
     g_ptr_array_insert(results, lineNum, codedLine);
     pthread_mutex_unlock(&lock);
   }
