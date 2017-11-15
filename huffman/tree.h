@@ -1,11 +1,12 @@
 #include "tree_node.h"
 #include "freq.h"
+#include "glib.h"
 
 //helper function needed to create tree from a dict
-my_freq *remove_smallest(queue *a, queue *b);
+freq_t *remove_smallest(GQueue *a, GQueue *b);
 
 //build tree from a dict of character-frequency key-value pairings
-tree_node *build_tree(dict *my_dict);
+tree_node *build_tree(GHashTable *my_dict);
 
 //write a tree to a file for later use
 void write_tree(char *tree_name, tree_node *root);
