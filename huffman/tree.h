@@ -3,7 +3,7 @@
 #include "glib.h"
 
 //helper function needed to create tree from a dict
-freq_t *remove_smallest(GQueue *a, GQueue *b);
+tree_node *remove_smallest(GQueue *a, GQueue *b);
 
 //build tree from a dict of character-frequency key-value pairings
 tree_node *build_tree(GHashTable *my_dict);
