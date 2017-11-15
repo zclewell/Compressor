@@ -20,12 +20,10 @@ void tree_to_map(tree_node *curr, GHashTable *my_dict, char *path_so_far) {
     if (curr->left == NULL && curr->right == NULL) {
         char *path_copy = strdup(path_so_far);
         char *key_copy = malloc(2);
-        if (curr->my_freq->character) {
-            /* code */
-        key_copy[0] = curr->my_freq->character;
-        key_copy[1] = '\0';
-        g_hash_table_insert(my_dict,key_copy,path_copy);
-        fprintf(stderr, "%s has a path of: %s\n",key_copy,path_copy );
+        if (curr->my_freq.character) {
+            key_copy[0] = curr->my_freq.character;
+            key_copy[1] = '\0';
+            g_hash_table_insert(my_dict,key_copy,path_copy);
         }
     } else {
         size_t len = strlen(path_so_far);
@@ -44,12 +42,12 @@ void tree_to_map(tree_node *curr, GHashTable *my_dict, char *path_so_far) {
             tree_to_map(curr->right, my_dict, right_path);
         }
     }
-    // free(path_so_far);
+    free(path_so_far);
 }
 
 void encode(char* input_file, char *output_file, char *tree_file) {
     fprintf(stderr, "Reading from: %s\n", input_file);
-    int input_fd = open(input_file, O_CREAT | O_RDONLY);
+    int input_fd = open(input_file, O_CREAT | O_RDWR);
     if (input_fd < 0) {
         fprintf(stderr, "%s\n", "ERROR: Could not open input file");
         exit(1);
@@ -65,38 +63,29 @@ void encode(char* input_file, char *output_file, char *tree_file) {
             int *initial_value = malloc(sizeof(int));
             *initial_value = 1;
             g_hash_table_insert(my_dict,buf,initial_value);
-            fprintf(stderr, "Adding %s\n",buf );
         }
         buf = malloc(2);
         bytes_read = read(input_fd, buf,1);
     }
     close(input_fd);
     tree_node *root = build_tree(my_dict);
-    while(root->left) {
-        fprintf(stderr, "%s\n", "walking...");
-        root = root->left;
+
+    GHashTable *encode_dict = g_hash_table_new(g_str_hash,g_str_equal);
+    tree_to_map(root,encode_dict,NULL);
+    input_fd = open(input_file, O_CREAT | O_RDWR);
+    fprintf(stderr, "Writing to: %s\n", output_file);
+    int output_fd = open(output_file, O_CREAT | O_RDWR);
+    while(read(input_fd,buf,1)) {
+        buf[1] = '\0';
+        char *curr_string = g_hash_table_lookup(encode_dict,buf);
+        if (curr_string) {
+            write(output_fd, curr_string, strlen(curr_string));
+        }
     }
-    // fprintf(stderr, "%c\n", root->my_freq->character);
-
-
-    // GHashTable *encode_dict = g_hash_table_new(g_str_hash,g_str_equal);
-    // // // dictionary encode_dict = char_to_string_dictionary_create();
-    // tree_to_map(root,encode_dict,NULL);
-    // input_fd = open(input_file, O_CREAT | O_RDONLY);
-    // int output_fd = open(output_file, O_CREAT | O_WRONLY);
-    // while(read(input_fd,&buf,1)) {
-    //     buf[1] = '\0';
-    //     // key_value_pair pair = dictionary_at(&buf);
-    //     char *curr_string = g_hash_table_lookup(encode_dict,buf);
-    //     fprintf(stderr, "%s has a value of: %s\n",buf, curr_string);
-    //     if (curr_string) {
-    //         write(output_fd, "%s\n", strlen(curr_string));
-    //         /* code */
-    //     }
-    // }
-    // close(input_fd);
-    // close(output_fd);
-    // write_tree(tree_file,root);
+    close(input_fd);
+    close(output_fd);
+    fprintf(stderr, "Saving tree at: %s\n", tree_file);
+    write_tree(tree_file,root);
 }
 
 int main(int argc, char const *argv[]) {

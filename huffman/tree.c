@@ -9,30 +9,24 @@
 tree_node *root = NULL;
 
 tree_node *remove_smallest(GQueue *a, GQueue *b) {
-	size_t a_len = g_queue_get_length(a);
-	size_t b_len = g_queue_get_length(b);
-	fprintf(stderr, "a_len: %zu b_len: %zu\n",a_len,b_len );
-	if (a_len && b_len) {
-		tree_node *a_node = g_queue_peek_head(a);
-		tree_node *b_node = g_queue_peek_head(b);
-		freq_t *a_freq = a_node->my_freq;
-		freq_t *b_freq = b_node->my_freq;
-		if (a_freq->count < b_freq->count) {
-			a_node = g_queue_pop_head(a);
+	tree_node *a_node = g_queue_peek_head(a);
+	tree_node *b_node = g_queue_peek_head(b);
+	if (a_node && b_node) {
+		if (a_node->my_freq.count < b_node->my_freq.count) {
+			g_queue_pop_head(a);
 			return a_node;
 		} else {
-			b_node = g_queue_pop_head(b);
+			g_queue_pop_head(b);
 			return b_node;
 		}
-	} else if (a_len) {
-		tree_node *a_node = g_queue_pop_head(a);
+	} else if (a_node) {
+		g_queue_pop_head(a);
 		return a_node;
-	} else if (b_len) {
-		tree_node *b_node = g_queue_pop_head(b);
+	} else if (b_node) {
+		g_queue_pop_head(b);
 		return b_node;
-	} else {
-		return NULL;
-	}
+	} 
+	return NULL;
 }
 
 
@@ -44,35 +38,35 @@ tree_node *build_tree(GHashTable *my_dict) {
 	GQueue *merge_queue = g_queue_new();
 	size_t length = g_list_length(keys);
 	for (size_t i = 0; i < length; ++i) {
-		char *curr = keys->data;
-		int *curr_val = values->data;
-		// fprintf(stderr, "Currently on: %c:%d\n", *curr, *curr_val);
+		tree_node *new_node = malloc(sizeof(tree_node));
+		new_node->left = NULL;
+		new_node->right = NULL;
+		new_node->my_freq.character = *(char*)keys->data;
+		new_node->my_freq.count = *(int*)values->data;
+		// fprintf(stderr, "%c,%d\n",new_node->my_freq.character,new_node->my_freq.count );
+	 	g_queue_push_tail(single_queue,new_node);
 		keys = keys->next;
 		values = values->next;
-		tree_node *new_node = malloc(sizeof(tree_node));
-		new_node->my_freq = malloc(sizeof(freq_t));
-		new_node->my_freq->character = *curr;
-		new_node->my_freq->count = *curr_val;
-		fprintf(stderr, "New Node: %s,%d\n",curr,*curr_val );
-	 	g_queue_push_tail(single_queue,new_node);
 	 } 
-	 // g_queue_push_tail(merge_queue,g_queue_pop_head(single_queue));
 	 while( g_queue_get_length(single_queue) + g_queue_get_length(merge_queue) > 1 ) {
-	 	tree_node *new_left = remove_smallest(single_queue,merge_queue);
-	 	tree_node *new_right = NULL;
-	 	if (g_queue_get_length(merge_queue) + g_queue_get_length(single_queue)) {
-	 		new_right = remove_smallest(single_queue,merge_queue);
-	 	}
 	 	tree_node *merged = malloc(sizeof(tree_node));
-	 	merged->my_freq = malloc(sizeof(freq_t));
-	 	if (new_left) {
-	 		merged->my_freq->count += new_left->my_freq->count; 
+	 	merged->left = remove_smallest(single_queue,merge_queue);
+	 	if (g_queue_get_length(merge_queue) + g_queue_get_length(single_queue)) {
+	 		merged->right = remove_smallest(single_queue,merge_queue);
+	 	} else {
+	 		merged->right = NULL;
 	 	}
-	 	if (new_right) {
-	 		merged->my_freq->count += new_right->my_freq->count;
+	 	merged->my_freq.count = 0;
+	 	merged->my_freq.character = '\0';
+	 	if (merged->left) {
+	 		// fprintf(stderr, "%s\n", "new left was non-null");
+	 		merged->my_freq.count += merged->left->my_freq.count; 
 	 	}
-	 	merged->left = new_left;
-	 	merged->right = new_right;
+	 	if (merged->right) {
+	 		// fprintf(stderr, "%s\n", "new right was non-null");
+	 		merged->my_freq.count += merged->right->my_freq.count;
+	 	}
+	 	// fprintf(stderr, "Merged has a count of: %d\n", merged->my_freq.count);
 	 	g_queue_push_tail(merge_queue,merged);
 	 }
 	 tree_node *output = g_queue_pop_head(merge_queue);
@@ -81,17 +75,24 @@ tree_node *build_tree(GHashTable *my_dict) {
 
 void write_tree_recursive(int fd, tree_node *curr) {
 	if (curr->left == NULL && curr->right == NULL) {
-		fprintf(fd, "%d%c", 1, curr->my_freq->character);
+		char buf[2];
+		// write(fd,"1",1);
+		sprintf(buf,"1%c\n", curr->my_freq.character);
+		write(fd,buf,2);
 	} else {
-		fprintf(fd, "%d", 0);
-		write_tree_recursive(fd, curr->left);
-		write_tree_recursive(fd, curr->right);
+		write(fd,"0",1);
+		if (curr->left) {
+			write_tree_recursive(fd, curr->left);
+		}
+		if (curr->right) {
+			write_tree_recursive(fd, curr->right);
+		}
 	}
 
 }
 
 void write_tree(char *tree_name, tree_node *root) {
-	 int tree_file_fd = open(tree_name, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | O_CLOEXEC);
+	 int tree_file_fd = open(tree_name, O_CREAT | O_RDWR);
 	 write_tree_recursive(tree_file_fd, root);
 	 close(tree_file_fd);
 }
@@ -101,9 +102,8 @@ tree_node *read_tree_recursive(int fd) {
 	tree_node *new_node = malloc(sizeof(tree_node));
 	if(read(fd, &next_char, 1)) {
 		if (next_char == '1') {
-			new_node->my_freq = malloc(sizeof(freq_t));
 			read(fd, &next_char, 1);
-			new_node->my_freq->character = next_char;
+			new_node->my_freq.character = next_char;
 			return new_node;
 		} else {
 			new_node->left = read_tree_recursive(fd);
@@ -116,7 +116,7 @@ tree_node *read_tree_recursive(int fd) {
 
 }
 tree_node *read_tree(char *tree_name) {
-	int tree_file_fd = open(tree_name, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR | O_CLOEXEC);
+	int tree_file_fd = open(tree_name, O_CREAT | O_WRONLY);
 	tree_node *root = read_tree_recursive(tree_file_fd);
 	close(tree_file_fd);
 	return root;
