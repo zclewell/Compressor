@@ -11,6 +11,7 @@
 
 void decode(char *input_file, char *output_file, char *tree_file) {
     tree_node *root = read_tree(tree_file);
+    printf("%s\n", "Generated tree...");
     tree_node *temp = root;
     char buf;
     int input_fd = open(input_file, O_CREAT | O_RDWR);
@@ -19,11 +20,13 @@ void decode(char *input_file, char *output_file, char *tree_file) {
     while(1) {
         char buf;
         int ret_val = read(input_fd, &buf, 1);
-        if (ret_val) {
+        fprintf(stderr, "%c\n", buf);
+        if (ret_val > 0) {
             if (buf == '1') {
                 temp = temp->right;
             } else {
                 temp = temp->left;
+                fprintf(stderr, "%s\n", "hey");
             }
             if (temp->right == NULL && temp->left == NULL) {
                 fprintf(output_fd, "%c\n",temp->my_freq.character);
