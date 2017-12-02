@@ -11,15 +11,17 @@
 #include "tree_node.h"
 #include "tree.h"
 
-extern void write_tree(char *tree_name, tree_node *root);
-extern tree_node *build_tree(GHashTable *my_dict);
-
+//Struct used to pass information to our worker threads
 typedef struct worker_struct {
     size_t start_byte;
     size_t end_byte;
     char *input_file;
 } worker_struct;
 
+/*
+    Worker method for our pthreads
+    Takes a worker_struct as its parameter and returns a dictionary corresponing to the section of file that was assigned
+*/
 void *worker(void *data) {
     worker_struct *my_struct = data;
     GHashTable *my_dict = g_hash_table_new(g_str_hash,g_str_equal);
@@ -41,10 +43,14 @@ void *worker(void *data) {
             break;
         }
     }
+    // free(my_struct);
     close(input_fd);
     return my_dict;
 }
 
+/*
+    Converts a huffman tree into a hashtable that can be used to encode our file
+*/
 void tree_to_map(tree_node *curr, GHashTable *my_dict, char *path_so_far) {
     if (path_so_far == NULL) {
         path_so_far = malloc(256);
@@ -81,6 +87,7 @@ void tree_to_map(tree_node *curr, GHashTable *my_dict, char *path_so_far) {
 void encode(char* input_file, char *output_file, char *tree_file, int thread_count) {
     fprintf(stderr, "Reading from: %s\n", input_file);
     size_t file_size = 0;
+
     FILE *temp_file = fopen(input_file, "r");
     if (temp_file) {
         fseek(temp_file, 0L, SEEK_END);
@@ -157,7 +164,7 @@ void encode(char* input_file, char *output_file, char *tree_file, int thread_cou
 }
 
 int main(int argc, char const *argv[]) {
-    if (argc < 4) {
+    if (argc < 5) {
         fprintf(stderr, "Not enough arguments\n");
         exit(1);
     }

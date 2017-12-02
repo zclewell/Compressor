@@ -9,6 +9,10 @@
 #include "tree_node.h"
 #include "tree.h"
 
+/*
+    Takes path to a compressed file and path to a file representing the huffman tree that was used to compress it
+    Prints out original file to given path
+*/
 void decode(char *input_file, char *output_file, char *tree_file) {
     tree_node *root = read_tree(tree_file);
     printf("%s\n", "Generated tree...");
@@ -38,8 +42,10 @@ void decode(char *input_file, char *output_file, char *tree_file) {
     }
     close(input_fd);
     close(output_fd);
+    tree_delete(root);
 }
 
+//function to check arguments
 int main(int argc, char const *argv[]) {
     if (argc < 3) {
         fprintf(stderr, "Not enough arguments\n");
