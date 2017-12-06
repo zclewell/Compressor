@@ -96,7 +96,6 @@ void encode(char* input, bit_file_t* file, GHashTable* table){
       if(strlen(input + currentIndex) > 1){
         int* code = g_hash_table_lookup(table, input + currentIndex);
         BitFilePutBitsNum(file, code, BITSIZE, sizeof(int));
-        //printf("outing %d for %s\n", *code, input + currentIndex);
       } else{
         BitFilePutBitsNum(file, input + currentIndex, BITSIZE, 1);
       }
@@ -118,10 +117,8 @@ void encode(char* input, bit_file_t* file, GHashTable* table){
     input[nextIndex] = 0;
     if(strlen(input + currentIndex) > 1){
       int* code = g_hash_table_lookup(table, input + currentIndex);
-      //printf("outing %d for %s\n", *code, input + currentIndex);
       BitFilePutBitsNum(file, code, BITSIZE, sizeof(int));
     } else{
-      //printf("outing %c\n",*(input + currentIndex));
       BitFilePutBitsNum(file, input + currentIndex, BITSIZE, 1);
     }
 
@@ -151,7 +148,7 @@ void run_encode_file(char* input, char* out){
 }
 
 
-//TODO do check on full dictionary, write read size to file
+//TODO write read size to file, fix new case w new lines
 int main (int argc, char** argv){
 
   char* n = "hett.txt";

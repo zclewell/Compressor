@@ -2,8 +2,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
-#include <assert.h>
-
 
 /*
 * Returns the number of digits in a number
@@ -79,10 +77,10 @@ char* decode(char* str){
     int escaped = 0;
     char* num = tmp + 1;
     if(*tmp == '/'){
-      escaped = 1;
       ++num;
       if(*num == '/'){
         ++num;
+        escaped = 1;
       }
     }
 

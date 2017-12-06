@@ -1,4 +1,5 @@
 #include "runLength.c"
+#include <assert.h>
 
 // basic tests, checks if encoded string is correct, and decoded ( encoeded) = original string
 int main(){
@@ -25,5 +26,9 @@ int main(){
   //assert(!strcmp("a1=1/1/1/", encode(mixCase)));
   char* decoded = decode(encode(mixCase));
   assert(!strcmp(decoded, mixCase));
+
+  char* slashes = strdup("aaa /44/31/");
+  char* decoded2 = decode(encode(slashes));
+  assert(!strcmp(decoded2, slashes));
 
 }
