@@ -93,8 +93,8 @@ int connect_helper(char *host, char *port) {
 
 
 int main(int argc, char **argv) {
-    if (argc != 5) {
-        fprintf(stderr, "Usage: <host> <port> <input> <output>\n");
+    if (argc != 4) {
+        fprintf(stderr, "Usage: <host> <port> <input> \n");
         exit(1);
     }
 
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
     close(encoded_fd);
 
     if (extra_file_size) {
-        int extra_fd = open("extra.txt", O_CREAT O_RDWR, 0644);
+        int extra_fd = open("extra.txt", O_CREAT | O_RDWR, 0644);
         read_socket_write_file(sockfd, extra_fd, extra_file_size);
         close(extra_fd);
     }
