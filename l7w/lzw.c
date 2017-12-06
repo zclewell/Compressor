@@ -2,11 +2,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include "bitfile.h"
 
 int BITSIZE = 12;
 int extendedAscii = 256;
+int maxAscii = 4095;
+
 
 
 void decode(int* input, size_t count, int fd, GHashTable* table){
@@ -67,20 +72,22 @@ int read_bits_to_buff(bit_file_t* inputFile, int* buff, int count){
 
 
 
-void run_decode_file(bit_file_t* inputFile, int outfd){
+void run_decode_file(char* input, char* out){
+  bit_file_t* inputFile = BitFileOpen(input, BF_READ);
+  int outfd = fileno(fopen(out, "w"));
   int buff[1024];
   int res;
   GHashTable* table = g_hash_table_new_full(g_int_hash, g_int_equal, free, free);
   while((res = read_bits_to_buff(inputFile, buff, 1024)) > 0){
     decode(buff, res, outfd, table);
   }
+  close(outfd);
+  BitFileClose(inputFile);
   g_hash_table_destroy(table);
 }
 
-
-void encode(char* input, bit_file_t* file){
+void encode(char* input, bit_file_t* file, GHashTable* table){
   int length = strlen(input);
-  GHashTable* table = g_hash_table_new_full(g_str_hash, g_str_equal, free, free);
   int currentIndex  = 0;
   int nextIndex = 1;
 
@@ -101,7 +108,7 @@ void encode(char* input, bit_file_t* file){
     if(g_hash_table_contains(table, input + currentIndex)){
       input[++nextIndex] = saved;
       continue;
-    } else{
+    } else if(extendedAscii <= maxAscii){
       int* temp = malloc(sizeof(int));
       *temp = extendedAscii;
       ++extendedAscii;
@@ -124,15 +131,34 @@ void encode(char* input, bit_file_t* file){
     nextIndex = currentIndex + 1;
   }
 
+
+}
+
+void run_encode_file(char* input, char* out){
+  GHashTable* table = g_hash_table_new_full(g_str_hash, g_str_equal, free, free);
+  char* line = NULL;
+  size_t n = 0;
+  ssize_t res;
+  FILE* fp = fopen(input, "r");
+  bit_file_t* encodedFile = BitFileOpen(out, BF_WRITE);
+  while((res = getline(&line, &n, fp)) != -1){
+    encode(line, encodedFile, table);
+  }
+  free(line);
+  fclose(fp);
+  BitFileClose(encodedFile);
   g_hash_table_destroy(table);
 }
 
+
+//TODO do check on full dictionary, write read size to file
 int main (int argc, char** argv){
 
-  //bit_file_t* outFile = BitFileOpen("out.txt", BF_WRITE);
-  //encode(strdup("thisisthethe"), outFile);
-
-  bit_file_t* inputFile = BitFileOpen("out.txt", BF_READ);
-  run_decode_file(inputFile, 1);
+  char* n = "hett.txt";
+  char* o = "hett-comp.txt";
+  if(argc == 1)
+    run_encode_file(n, o);
+  else
+    run_decode_file(o, "hett-res.txt");
   return 0;
 }
