@@ -17,18 +17,18 @@ void check_ok(int sockfd) {
     read(sockfd,buf,3);
     buf[3]= '\0';
     if (strcmp(buf,"OK\n") == 0) {
-        fprintf(stderr, "%s\n", OK_MESSAGE);
+        // fprintf(stderr, "%s\n", OK_MESSAGE);
         return;
     } else {
-        fprintf(stderr, "%s\n", ERROR_MESSAGE);
-        read(sockfd,buf,3);
-        char err_message[1024];
-        char *it = err_message;
-        while(read(sockfd,it,1) > 0) {
-            ++it;
-        }
-        *it = '\0';
-        print_error_message(err_message);
+        // fprintf(stderr, "%s\n", ERROR_MESSAGE);
+        // read(sockfd,buf,3);
+        // char err_message[1024];
+        // char *it = err_message;
+        // while(read(sockfd,it,1) > 0) {
+        //     ++it;
+        // }
+        // *it = '\0';
+        // print_error_message(err_message);
         shutdown(sockfd,SHUT_RD);
         exit(1);
     }
