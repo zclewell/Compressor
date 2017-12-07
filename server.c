@@ -82,7 +82,7 @@ void huffman_worker(void *data) {
     pid_t child  = fork();
     if (child) {
         int status;
-        waitpid(child,&status);
+        waitpid(child,&status,0);
         if (status) {
             exit(1);
         }
@@ -96,7 +96,7 @@ void huffman_worker(void *data) {
     my_stat_struct->original_file_size = get_file_length(my_worker_struct->file_name);
     my_stat_struct->compressed_file_size = get_file_length(encoded_file_name)/8 + get_file_length(tree_file_name);
 
-    return_struct my_return_struct = malloc(sizeof(return_struct));
+    return_struct *my_return_struct = malloc(sizeof(return_struct));
     my_return_struct->my_stats = my_stat_struct;
     my_return_struct->encoded_file_name = encoded_file_name;
     my_return_struct->extra_file_name = tree_file_name;
@@ -111,9 +111,9 @@ void run_length_worker(void *data) {
     my_stat_struct->original_file_size = 0;
     my_stat_struct->compressed_file_size = 0;
 
-    return_struct my_return_struct = malloc(sizeof(return_struct));
-    my_return_struct->my_stats = my_stat_struct;
-    my_return_struct->encoded_file_name = encoded_file_name;
+    return_struct *my_return_struct = malloc(sizeof(return_struct));
+    // my_return_struct->my_stats = my_stat_struct;
+    // my_return_struct->encoded_file_name = encoded_file_name;
     my_return_struct->extra_file_name = NULL;
 
     return my_return_struct;
@@ -127,9 +127,9 @@ void l7w_worker(void *data) {
     my_stat_struct->original_file_size = 0;
     my_stat_struct->compressed_file_size = 0;
 
-    return_struct my_return_struct = malloc(sizeof(return_struct));
-    my_return_struct->my_stats = my_stat_struct;
-    my_return_struct->encoded_file_name = encoded_file_name;
+    return_struct *my_return_struct = malloc(sizeof(return_struct));
+    // my_return_struct->my_stats = my_stat_struct;
+    // my_return_struct->encoded_file_name = encoded_file_name;
     my_return_struct->extra_file_name = NULL;
 
     return my_return_struct;
@@ -187,7 +187,7 @@ void handle_data(struct epoll_event *e) {
     read_socket_write_file(sockfd, temp_fd, len);
 
     pthread_t threads[3];
-    worker_struct *my_worker_struct = malloc(size_of(worker_struct));
+    worker_struct *my_worker_struct = malloc(sizeof(worker_struct));
 
     my_worker_struct->file_name = TEMP_FILE;
     pthread_create(threads, NULL, huffman_worker, my_worker_struct);
