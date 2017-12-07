@@ -21,14 +21,14 @@ void decode(bit_file_t* encodedFile, int fd){
   int curr = 0;
   BitFileGetBitsNum(encodedFile, &curr, BITSIZE, sizeof(int));
   while(1){
-    /*int curr = input[i];
-    if(BitFileGetBitsNum(encodedFile, &curr, BITSIZE, sizeof(int)) == EOF){
-      break;
-    }*/
     int currentLength = 1;
     char* out = NULL;
     if(curr > 255){
+      //if(!g_hash_table_contains())
       out  = g_hash_table_lookup(table, &curr);
+      //if(!out){
+      //  printf("error\n");
+      //}
       currentLength = strlen(out);
       write(fd, out, currentLength);
     } else{
@@ -41,10 +41,30 @@ void decode(bit_file_t* encodedFile, int fd){
     if(res == EOF){
       break;
     }
+    //if(nextInt == 2560){
+    //  printf("error 2\n" );
+    //}
     char* next = NULL;
     if(nextInt > 255){
+      if(!g_hash_table_contains(table, &nextInt)){
+        char* newEntry = malloc(currentLength + 2);
+        newEntry[currentLength + 1] = 0;
+        if(out){
+          strncpy(newEntry, out, currentLength);
+          newEntry[currentLength] = *out;
+        } else{
+          newEntry[0] = curr;
+          newEntry[1] = curr;
+        }
+        int* key = malloc(sizeof(int));
+        //*key = nextInt;
+        *key = extendedAscii;
+        ++extendedAscii;
+        g_hash_table_insert(table, key, newEntry);
+        curr = nextInt;
+        continue;
+      }
       next = g_hash_table_lookup(table, &nextInt);
-      nextLength = strlen(next);
     }
 
     char* val = malloc(currentLength + nextLength + 1);
@@ -54,12 +74,15 @@ void decode(bit_file_t* encodedFile, int fd){
     } else{
       *val = curr;
     }
-    if(nextLength > 1){
-      strncpy(val + currentLength, next, nextLength);
+    if(next){
+      strncpy(val + currentLength, next, 1);
     } else{
       val[currentLength] = nextInt;
     }
     int* key = malloc(sizeof(int));
+    //if(g_hash_table_lookup(table, &extendedAscii)){
+    //  ++extendedAscii;
+    //}
     *key = extendedAscii;
     g_hash_table_insert(table, key, val);
     ++extendedAscii;
@@ -94,9 +117,10 @@ void run_decode_file(char* input, char* out){
   BitFileClose(inputFile);
 }
 
-void encode(char* input, size_t length, bit_file_t* file, GHashTable* table){
+void encode(char* input, size_t length, bit_file_t* file){
   size_t currentIndex  = 0;
   size_t nextIndex = 1;
+  GHashTable* table = g_hash_table_new_full(g_str_hash, g_str_equal, free, free);
 
   while(nextIndex <= length){
     if(nextIndex == length){
@@ -135,7 +159,7 @@ void encode(char* input, size_t length, bit_file_t* file, GHashTable* table){
     currentIndex = nextIndex;
     nextIndex = currentIndex + 1;
   }
-
+  g_hash_table_destroy(table);
 
 }
 
@@ -145,24 +169,37 @@ void run_encode_file(char* input, char* out){
   lseek(fd, 0, SEEK_SET);
 
   char* mappedFile = (char*)mmap(NULL, fileSize, PROT_WRITE, MAP_PRIVATE, fd, 0);
-  GHashTable* table = g_hash_table_new_full(g_str_hash, g_str_equal, free, free);
   bit_file_t* encodedFile = BitFileOpen(out, BF_WRITE);
-  encode(mappedFile, fileSize, encodedFile, table);
+  encode(mappedFile, fileSize, encodedFile);
 
   BitFileClose(encodedFile);
   munmap(mappedFile, fileSize);
-  g_hash_table_destroy(table);
 }
 
+#define USAGE "usage: %s mode(1 for compress 2 for decomress) input_file outout_file\n"
+#define MODE  "Mode is 1 to compress input file 2 to decomress inut file\n"
 
-//TODO write read size to file, fix new case w new lines
-int main (int argc, char** argv){
+int main(int argc, char**argv){
+  if(argc != 4){
+    fprintf(stderr, USAGE, argv[0]);
+    exit(1);
+  }
 
-  char* n = "hett.txt";
-  char* o = "hett-comp.txt";
-  if(argc == 1)
-    run_encode_file(n, o);
-  else
-    run_decode_file(o, "hett-res.txt");
+  int mode = atoi(argv[1]);
+
+  char* input = argv[2];
+  char* output = argv[3];
+
+  if(mode == 1){
+    run_encode_file(input, output);
+  } else if(mode == 2){
+    run_decode_file(input, output);
+  } else{
+    fprintf(stderr, MODE);
+  }
+
   return 0;
+
 }
+
+//TODO write read size to file
