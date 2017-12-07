@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -14,9 +15,16 @@ int maxAscii = 4095;
 
 
 
-void decode(int* input, size_t count, int fd, GHashTable* table){
-  for(size_t i = 0; i < count; ++i){
-    int curr = input[i];
+void decode(bit_file_t* encodedFile, int fd){
+  GHashTable* table = g_hash_table_new_full(g_int_hash, g_int_equal, free, free);
+
+  int curr = 0;
+  BitFileGetBitsNum(encodedFile, &curr, BITSIZE, sizeof(int));
+  while(1){
+    /*int curr = input[i];
+    if(BitFileGetBitsNum(encodedFile, &curr, BITSIZE, sizeof(int)) == EOF){
+      break;
+    }*/
     int currentLength = 1;
     char* out = NULL;
     if(curr > 255){
@@ -28,7 +36,11 @@ void decode(int* input, size_t count, int fd, GHashTable* table){
     }
 
     int nextLength = 1;
-    int nextInt = input[i + 1];
+    int nextInt = 0;
+    int res = BitFileGetBitsNum(encodedFile, &nextInt, BITSIZE, sizeof(int));
+    if(res == EOF){
+      break;
+    }
     char* next = NULL;
     if(nextInt > 255){
       next = g_hash_table_lookup(table, &nextInt);
@@ -51,7 +63,9 @@ void decode(int* input, size_t count, int fd, GHashTable* table){
     *key = extendedAscii;
     g_hash_table_insert(table, key, val);
     ++extendedAscii;
+    curr = nextInt;
   }
+  g_hash_table_destroy(table);
 
 }
 
@@ -75,21 +89,14 @@ int read_bits_to_buff(bit_file_t* inputFile, int* buff, int count){
 void run_decode_file(char* input, char* out){
   bit_file_t* inputFile = BitFileOpen(input, BF_READ);
   int outfd = fileno(fopen(out, "w"));
-  int buff[1024];
-  int res;
-  GHashTable* table = g_hash_table_new_full(g_int_hash, g_int_equal, free, free);
-  while((res = read_bits_to_buff(inputFile, buff, 1024)) > 0){
-    decode(buff, res, outfd, table);
-  }
+  decode(inputFile, outfd);
   close(outfd);
   BitFileClose(inputFile);
-  g_hash_table_destroy(table);
 }
 
-void encode(char* input, bit_file_t* file, GHashTable* table){
-  int length = strlen(input);
-  int currentIndex  = 0;
-  int nextIndex = 1;
+void encode(char* input, size_t length, bit_file_t* file, GHashTable* table){
+  size_t currentIndex  = 0;
+  size_t nextIndex = 1;
 
   while(nextIndex <= length){
     if(nextIndex == length){
@@ -113,6 +120,7 @@ void encode(char* input, bit_file_t* file, GHashTable* table){
       ++extendedAscii;
       g_hash_table_insert(table, strdup(input + currentIndex), temp);
     }
+
     char temp = input[nextIndex];
     input[nextIndex] = 0;
     if(strlen(input + currentIndex) > 1){
@@ -132,18 +140,17 @@ void encode(char* input, bit_file_t* file, GHashTable* table){
 }
 
 void run_encode_file(char* input, char* out){
+  int fd = fileno(fopen(input, "r"));
+  size_t fileSize= lseek(fd, 0, SEEK_END);
+  lseek(fd, 0, SEEK_SET);
+
+  char* mappedFile = (char*)mmap(NULL, fileSize, PROT_WRITE, MAP_PRIVATE, fd, 0);
   GHashTable* table = g_hash_table_new_full(g_str_hash, g_str_equal, free, free);
-  char* line = NULL;
-  size_t n = 0;
-  ssize_t res;
-  FILE* fp = fopen(input, "r");
   bit_file_t* encodedFile = BitFileOpen(out, BF_WRITE);
-  while((res = getline(&line, &n, fp)) != -1){
-    encode(line, encodedFile, table);
-  }
-  free(line);
-  fclose(fp);
+  encode(mappedFile, fileSize, encodedFile, table);
+
   BitFileClose(encodedFile);
+  munmap(mappedFile, fileSize);
   g_hash_table_destroy(table);
 }
 
