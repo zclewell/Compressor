@@ -262,7 +262,7 @@ void run_server(char *port) {
 			}
 			send_response_length(clientfd, 0); //send back stat file
 
-			int encoded_fd = open(best_return_struct.encoded_file_name, O_WR);
+			int encoded_fd = open(best_return_struct.encoded_file_name, O_RDWR);
 			read_fd_write_fd(encoded_fd, clientfd, best_return_struct.my_stats->compressed_file_size);
 
 		}
