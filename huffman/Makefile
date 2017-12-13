@@ -5,5 +5,6 @@ encode:
 	gcc encode.c tree.c -o encode -pthread -std=c99 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglib-2.0
 
 
-decode: decode.c tree.c
+decode: 
+	gcc decode.c tree.c -o decode -std=c99 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lglib-2.0
 

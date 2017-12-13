@@ -149,8 +149,12 @@ void encode(char* input_file, char *output_file, char *tree_file, int thread_cou
     int input_fd = open(input_file, O_CREAT | O_RDWR);
     fprintf(stderr, "Writing to: %s\n", output_file);
     int output_fd = open(output_file, O_CREAT | O_RDWR, 0644);
+    if(!(output_fd > 0)) {
+        fprintf(stderr, "Failed to open %s\n", output_file);
+        exit(1);
+    }
     char buf[2];
-    while(read(input_fd,buf,1)) {
+    while(read(input_fd,buf,1) > 0) {
         buf[1] = '\0';
         char *curr_string = g_hash_table_lookup(encode_dict,buf);
         if (curr_string) {

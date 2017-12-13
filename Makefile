@@ -8,7 +8,7 @@ lzw: lzw.c
 	gcc -g -o lzw lzw.c bitfile.c `pkg-config --cflags --libs glib-2.0`
 
 server: server.c
-	clang -pthread server.c -o server -std=c99 -c -MMD -MP -D_GNU_SOURCE
+	clang -pthread server.c -o server
 
 client: client.c
-	gcc client.c -o client -std=c99 -c -MMD -MP -D_GNU_SOURCE
+	clang client.c -o client

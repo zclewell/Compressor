@@ -20,7 +20,7 @@
 
 #define TEMP_FILE "TEMP_FILE"
 #define NUM_ALGORITHMS 3
-#define THREAD_COUNT 8
+#define THREAD_COUNT "8"
 
 #define HUFFMAN_ENCODE_EXE "./huffman/encode"
 #define RUN_LENGTH_EXE "./run_length_encoding/rL"
@@ -60,14 +60,28 @@ void read_complete(int sockfd, void *buf, size_t len) {
 		}
 }
 
+size_t get_file_length(char *file_name) {
+		if (!file_name) {
+			return 0;
+		}
+    FILE *file = fopen(file_name, "r");
+    fseek(file, 0L, SEEK_END);
+    size_t sz = ftell(file);
+    fclose(file);
+    return sz;
+    
+}
+
+
 void read_fd_write_fd(int readfd, int writefd, size_t len) {
-    char buf[1025];
+    char buf[1024];
     size_t read_so_far = 0;
     while(read_so_far < len) {
-        int ret = read(readfd,buf + read_so_far, 1024);
+        int ret = read(readfd,buf, 1024);
         if (ret > 0) {
-            buf[ret] = '\0';
-            dprintf(writefd,"%s",buf);
+        		write(writefd, buf, ret);
+            // buf[ret] = '\0';
+            // dprintf(writefd,"%s",buf);
             read_so_far += ret;
         }
     }
@@ -89,15 +103,6 @@ void cleanup() {
 				perror("shutdown():");
 		}
 		close(serverSocket);
-
-		// for (int i = 0; i < MAX_CLIENTS; i++) {
-		// 		if (clients[i] != -1) {
-		// 				if (shutdown(clients[i], SHUT_RDWR) != 0) {
-		// 						perror("shutdown(): ");
-		// 				}
-		// 				close(clients[i]);
-		// 		}
-		// }
 }
 
 void *huffman_worker(void *data) {
@@ -113,7 +118,8 @@ void *huffman_worker(void *data) {
 						exit(1);
 				}
 		} else {
-				execl(HUFFMAN_ENCODE_EXE, HUFFMAN_ENCODE_EXE,my_worker_struct->file_name,encoded_file_name,tree_file_name,NULL);
+				close(2);
+				execl(HUFFMAN_ENCODE_EXE, HUFFMAN_ENCODE_EXE,my_worker_struct->file_name,encoded_file_name,tree_file_name,THREAD_COUNT,NULL);
 				fprintf(stderr, "%s\n", EXEC_ERR);
 				exit(1);
 		}
@@ -126,7 +132,7 @@ void *huffman_worker(void *data) {
 		my_return_struct->my_stats = my_stat_struct;
 		my_return_struct->encoded_file_name = encoded_file_name;
 		my_return_struct->extra_file_name = tree_file_name;
-
+		fprintf(stderr, "\thuffman thread finished\n");
 		return my_return_struct;
 }
 
@@ -195,7 +201,6 @@ void run_server(char *port) {
 		}
 		int optval = 1;
 		setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(int));
-		fillWithInt();
 		serverSocket = sockfd;
 
 		struct addrinfo hints, *result;
@@ -215,7 +220,6 @@ void run_server(char *port) {
 		}
 
 		intptr_t indexes[MAX_CLIENTS];
-		initIndexesArr(indexes);
 		while(!endSession){
 			if(listen(sockfd, MAX_CLIENTS)){
 				perror(NULL);
@@ -227,43 +231,54 @@ void run_server(char *port) {
 				exit(1);
 			}
 
+			fprintf(stderr, "[SERVER] received new client\n");
+
 			size_t size_of_file = get_response_length(clientfd);
-			int original_fd = open("original.txt", O_CREAT, O_RDWR);
+			int original_fd = open(TEMP_FILE, O_CREAT | O_RDWR, 0644);
 			read_fd_write_fd(clientfd, original_fd, size_of_file);
 
 			pthread_t threads[3];
 			worker_struct *my_worker_struct = malloc(sizeof(worker_struct));
 
+			fprintf(stderr, "[SERVER] starting worker threads...\n");
 			my_worker_struct->file_name = TEMP_FILE;
 			pthread_create(threads, NULL, huffman_worker, my_worker_struct);
-			pthread_create(threads + 1, NULL, run_length_worker, my_worker_struct);
-			pthread_create(threads + 2, NULL, l7w_worker, my_worker_struct);
+			// pthread_create(threads + 1, NULL, run_length_worker, my_worker_struct);
+			// pthread_create(threads + 2, NULL, l7w_worker, my_worker_struct);
 
-			return_struct return_struct_arr[NUM_ALGORITHMS];
-			for (int i = 0; i < NUM_ALGORITHMS; ++i) {
-				 pthread_join(threads[i], &return_struct_arr[i]);
+			return_struct *return_struct_arr[NUM_ALGORITHMS];
+			for (int i = 0; i < 1; ++i) {
+				 pthread_join(threads[i], return_struct_arr + i);
+			}
+			fprintf(stderr, "[SERVER] all worker threads done!\n");
+
+			write(clientfd, "OK\n", 3);
+			return_struct *best_return_struct = return_struct_arr[0];
+			// for (int i = 1; i < NUM_ALGORITHMS; ++i) {
+			// 	if (return_struct_arr[i].my_stats->compressed_file_size < best_return_struct.my_stats->compressed_file_size) {
+			// 		best_return_struct = return_struct_arr[i];
+			// 	}
+			// }
+
+			char *encoded_file_name = best_return_struct->encoded_file_name;
+			char *extra_file_name = best_return_struct->extra_file_name;
+
+			size_t encoded_file_length = get_file_length(encoded_file_name);
+			size_t extra_file_length = get_file_length(extra_file_name);
+
+			send_response_length(clientfd, 0);
+			send_response_length(clientfd, encoded_file_length);
+			send_response_length(clientfd, extra_file_length);
+
+			int encoded_file_fd = open(encoded_file_name, O_RDWR);
+			read_fd_write_fd(encoded_file_fd, clientfd, encoded_file_length);
+
+			if (extra_file_name) {
+				int extra_file_fd = open(extra_file_name, O_RDWR);
+				read_fd_write_fd(extra_file_fd, clientfd, extra_file_length);
 			}
 
-			return_struct best_return_struct = return_struct_arr[0];
-			for (int i = 1; i < NUM_ALGORITHMS; ++i) {
-				if (return_struct_arr[i].my_stats->compressed_file_size < best_return_struct.my_stats->compressed_file_size) {
-					best_return_struct = return_struct_arr[i];
-				}
-			}
-
-			//create file with statistics
-			int have_extra_file = best_return_struct.extra_file_name != NULL;
-			//send back best file
-			send_response_length(clientfd, best_return_struct.my_stats->compressed_file_size);
-			if (have_extra_file) {
-				send_response_length(clientfd, get_file_length(best_return_struct.extra_file_name));
-			} else {
-				send_response_length(clientfd, 0);
-			}
-			send_response_length(clientfd, 0); //send back stat file
-
-			int encoded_fd = open(best_return_struct.encoded_file_name, O_RDWR);
-			read_fd_write_fd(encoded_fd, clientfd, best_return_struct.my_stats->compressed_file_size);
+			close(clientfd);
 
 		}
 
