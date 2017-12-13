@@ -14,7 +14,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
+#include <fcntl.h>
 
 #define MAX_CLIENTS 8
 
@@ -263,7 +263,7 @@ void run_server(char *port) {
 			send_response_length(clientfd, 0); //send back stat file
 
 			int encoded_fd = open(best_return_struct.encoded_file_name, O_WR);
-			read_fd_write_fd(encoded_fd, clientfd);
+			read_fd_write_fd(encoded_fd, clientfd, best_return_struct.my_stats->compressed_file_size);
 
 		}
 
