@@ -20,15 +20,6 @@ void check_ok(int sockfd) {
         // fprintf(stderr, "%s\n", OK_MESSAGE);
         return;
     } else {
-        // fprintf(stderr, "%s\n", ERROR_MESSAGE);
-        // read(sockfd,buf,3);
-        // char err_message[1024];
-        // char *it = err_message;
-        // while(read(sockfd,it,1) > 0) {
-        //     ++it;
-        // }
-        // *it = '\0';
-        // print_error_message(err_message);
         shutdown(sockfd,SHUT_RD);
         exit(1);
     }
@@ -40,6 +31,8 @@ void read_complete(int sockfd, void *buf, size_t len) {
         int ret = read(sockfd, buf + read_so_far, len - read_so_far);
         if (ret > 0) {
             read_so_far += ret;
+        } else {
+            break;
         }
     }
 }
@@ -48,19 +41,41 @@ void read_socket_write_file(int sockfd, int fd, size_t len) {
     char buf[1025];
     size_t read_so_far = 0;
     while(read_so_far < len) {
-        int ret = read(sockfd,buf + read_so_far, 1024);
+        int ret = read(sockfd,buf, 10);
+        // fprintf(stderr, "Read %d\n", ret);
         if (ret > 0) {
-            buf[ret] = '\0';
-            dprintf(fd,"%s",buf);
+            int wrote_so_far = 0;
+            while (wrote_so_far < ret) {
+                int rett = write(fd, buf + wrote_so_far, ret - wrote_so_far);
+                // fprintf(stderr, "Wrote %d\n", rett);
+                if (rett) {
+                    wrote_so_far += rett;
+                }
+            }
             read_so_far += ret;
+        } else {
+            break;
         }
     }
 }
 
 size_t get_response_length(int sockfd) {
     size_t len;
-    read_complete(sockfd, &len, sizeof(len));
+    read_complete(sockfd, &len, sizeof(size_t));
     return len;
+}
+
+void send_response_length(int sockfd, size_t len) {
+    write(sockfd, &len, sizeof(size_t));
+}
+
+size_t get_file_length(char *file_name) {
+    FILE *file = fopen(file_name, "r");
+    fseek(file, 0L, SEEK_END);
+    size_t sz = ftell(file);
+    fclose(file);
+    return sz;
+    
 }
 
 //Takes a host and a port as strings and return a file descriptor for them (or crashes and burns)
@@ -100,6 +115,7 @@ int main(int argc, char **argv) {
 
     int sockfd = connect_helper(argv[1],argv[2]);
     int input_fd = open(argv[3], O_RDWR);
+    send_response_length(sockfd, get_file_length(argv[3]));
     char buf[1024];
     size_t sent_bytes = 0;
     while(1) {
@@ -110,24 +126,38 @@ int main(int argc, char **argv) {
             break;
         }
     }
-    shutdown(sockfd,SHUT_WR);
+    // shutdown(sockfd,SHUT_WR);
 
     check_ok(sockfd);
     size_t statistics_file_size = get_response_length(sockfd);
-    size_t encoded_file_size = get_response_length(sockfd);
+    fprintf(stderr, "Expecting stat file of size: %zu\n", statistics_file_size);
+    size_t encoded_file_size = get_response_length(sockfd);    
+    fprintf(stderr, "Expecting encoded file of size: %zu\n", encoded_file_size);
+
     size_t extra_file_size = get_response_length(sockfd);
+    fprintf(stderr, "Expecting extra file of size: %zu\n", extra_file_size);
         
     int stat_fd = open("stats.txt", O_CREAT | O_RDWR, 0644);
+    // fprintf(stderr, "%s\n", "opened stats.txt");
     read_socket_write_file(sockfd, stat_fd, statistics_file_size);
+    // fprintf(stderr, "%s\n", "wrote to stats.txt");
     close(stat_fd);
+    fprintf(stderr, "%s\n", "Finished reading stats file from server");
 
     int encoded_fd = open("encoded.txt", O_CREAT | O_RDWR, 0644);
+    // fprintf(stderr, "%s\n", "opened encoded.txt");
     read_socket_write_file(sockfd, encoded_fd, encoded_file_size);
+    // fprintf(stderr, "%s\n", "wrote to encoded.txt");
     close(encoded_fd);
+    fprintf(stderr, "%s\n", "Finished reading encode file from server");
 
-    if (extra_file_size) {
+
+    if (extra_file_size > 0) {
         int extra_fd = open("extra.txt", O_CREAT | O_RDWR, 0644);
+        // fprintf(stderr, "%s\n", "opened extra.txt");
         read_socket_write_file(sockfd, extra_fd, extra_file_size);
+        // fprintf(stderr, "%s\n", "wrote to extra.txt");
         close(extra_fd);
-    }
+        fprintf(stderr, "%s\n", "Finished reading extra file from server");
+    } 
 }

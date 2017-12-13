@@ -44,6 +44,7 @@ typedef struct return_struct {
 		stat_struct *my_stats;
 		char *encoded_file_name;
 		char *extra_file_name;
+		char *encode_type;
 } return_struct;
 
 void close_server() {
@@ -78,8 +79,16 @@ void read_fd_write_fd(int readfd, int writefd, size_t len) {
     size_t read_so_far = 0;
     while(read_so_far < len) {
         int ret = read(readfd,buf, 1024);
+        // fprintf(stderr, "Read %d\n",  ret);
         if (ret > 0) {
-        		write(writefd, buf, ret);
+        		int wrote_so_far = 0;
+        		while(wrote_so_far < ret) {
+        			int rett = write(writefd, buf + wrote_so_far, ret - wrote_so_far);
+        			// fprintf(stderr, "wrote %d\n", rett);
+        			if (rett > 0) {
+        				wrote_so_far += rett;
+        			}
+        		}
             // buf[ret] = '\0';
             // dprintf(writefd,"%s",buf);
             read_so_far += ret;
@@ -89,12 +98,12 @@ void read_fd_write_fd(int readfd, int writefd, size_t len) {
 
 size_t get_response_length(int sockfd) {
 		size_t len;
-		read_complete(sockfd, &len, sizeof(len));
+		read_complete(sockfd, &len, sizeof(size_t));
 		return len;
 }
 
 void send_response_length(int sockfd, size_t len) {
-	write(sockfd, &len, sizeof(len));
+	write(sockfd, &len, sizeof(size_t));
 }
 
 
@@ -132,7 +141,8 @@ void *huffman_worker(void *data) {
 		my_return_struct->my_stats = my_stat_struct;
 		my_return_struct->encoded_file_name = encoded_file_name;
 		my_return_struct->extra_file_name = tree_file_name;
-		fprintf(stderr, "\thuffman thread finished\n");
+		my_return_struct->encode_type = "huffman";
+		fprintf(stderr, "\thuffman thread finished!\n");
 		return my_return_struct;
 }
 
@@ -148,7 +158,7 @@ void *run_length_worker(void *data) {
 						exit(1);
 				}
 		} else {
-				execl(RUN_LENGTH_EXE, RUN_LENGTH_EXE, 1, my_worker_struct->file_name, encoded_file_name, NULL);
+				execl(RUN_LENGTH_EXE, RUN_LENGTH_EXE, "1", my_worker_struct->file_name, encoded_file_name, NULL);
 				fprintf(stderr, "%s\n", EXEC_ERR);
 				exit(1);
 		}
@@ -159,8 +169,10 @@ void *run_length_worker(void *data) {
 
 		return_struct *my_return_struct = malloc(sizeof(return_struct));
 		my_return_struct->my_stats = my_stat_struct;
-		my_return_struct->encoded_file_name = NULL;
+		my_return_struct->encoded_file_name = encoded_file_name;
 		my_return_struct->extra_file_name = NULL;
+		my_return_struct->encode_type = "run length";
+		fprintf(stderr, "\trun length thread finished!\n");
 
 		return my_return_struct;
 }
@@ -177,7 +189,7 @@ void *l7w_worker(void *data) {
 			exit(1);
 		}
 	} else {
-		execl(L7W_EXE, L7W_EXE, 1, my_worker_struct->file_name, encoded_file_name, NULL);
+		execl(L7W_EXE, L7W_EXE, "1", my_worker_struct->file_name, encoded_file_name, NULL);
 		fprintf(stderr, "%s\n", EXEC_ERR);
 		exit(1);
 	}
@@ -187,9 +199,10 @@ void *l7w_worker(void *data) {
 
 		return_struct *my_return_struct = malloc(sizeof(return_struct));
 		my_return_struct->my_stats = my_stat_struct;
-		my_return_struct->encoded_file_name = NULL;
+		my_return_struct->encoded_file_name = encoded_file_name;
 		my_return_struct->extra_file_name = NULL;
-
+		my_return_struct->encode_type = "l7w";
+		fprintf(stderr, "\tlzw thread finished!\n");
 		return my_return_struct;
 }
 
@@ -243,33 +256,46 @@ void run_server(char *port) {
 			fprintf(stderr, "[SERVER] starting worker threads...\n");
 			my_worker_struct->file_name = TEMP_FILE;
 			pthread_create(threads, NULL, huffman_worker, my_worker_struct);
-			// pthread_create(threads + 1, NULL, run_length_worker, my_worker_struct);
-			// pthread_create(threads + 2, NULL, l7w_worker, my_worker_struct);
+			pthread_create(threads + 1, NULL, run_length_worker, my_worker_struct);
+			pthread_create(threads + 2, NULL, l7w_worker, my_worker_struct);
 
 			return_struct *return_struct_arr[NUM_ALGORITHMS];
-			for (int i = 0; i < 1; ++i) {
+			for (int i = 0; i < NUM_ALGORITHMS; ++i) {
 				 pthread_join(threads[i], return_struct_arr + i);
 			}
 			fprintf(stderr, "[SERVER] all worker threads done!\n");
 
 			write(clientfd, "OK\n", 3);
 			return_struct *best_return_struct = return_struct_arr[0];
-			// for (int i = 1; i < NUM_ALGORITHMS; ++i) {
-			// 	if (return_struct_arr[i].my_stats->compressed_file_size < best_return_struct.my_stats->compressed_file_size) {
-			// 		best_return_struct = return_struct_arr[i];
-			// 	}
-			// }
+			for (int i = 1; i < NUM_ALGORITHMS; ++i) {
+				if (return_struct_arr[i]->my_stats->compressed_file_size < best_return_struct->my_stats->compressed_file_size) {
+					best_return_struct = return_struct_arr[i];
+				}
+			}
+
+			int stats_fd = open("server_stats.txt", O_CREAT | O_RDWR, 0644);
+			dprintf(stats_fd,"%s\nOriginal filesize: %zu\nCompressed filesize: %zu\n",best_return_struct->encode_type,best_return_struct->my_stats->original_file_size,best_return_struct->my_stats->compressed_file_size);
+			close(stats_fd);
 
 			char *encoded_file_name = best_return_struct->encoded_file_name;
 			char *extra_file_name = best_return_struct->extra_file_name;
 
+			size_t stats_file_length = get_file_length("server_stats.txt");
 			size_t encoded_file_length = get_file_length(encoded_file_name);
 			size_t extra_file_length = get_file_length(extra_file_name);
 
-			send_response_length(clientfd, 0);
+			send_response_length(clientfd, stats_file_length);
 			send_response_length(clientfd, encoded_file_length);
 			send_response_length(clientfd, extra_file_length);
 
+			fprintf(stderr, "[SERVER] sent stats file size (%zu)\n", stats_file_length);
+			fprintf(stderr, "[SERVER] sent encoded file size (%zu)\n", encoded_file_length);
+			fprintf(stderr, "[SERVER] sent extra file size (%zu)\n", extra_file_length);
+
+			stats_fd = open("server_stats.txt", O_CREAT | O_RDWR, 0644);
+			read_fd_write_fd(stats_fd, clientfd, stats_file_length);
+
+			// fprintf(stderr, "%s\n", encoded_file_name);
 			int encoded_file_fd = open(encoded_file_name, O_RDWR);
 			read_fd_write_fd(encoded_file_fd, clientfd, encoded_file_length);
 
@@ -278,6 +304,11 @@ void run_server(char *port) {
 				read_fd_write_fd(extra_file_fd, clientfd, extra_file_length);
 			}
 
+			remove("huffman_tree.txt");
+			remove("huffman_encoded.txt");
+			remove("l7w_encoded.txt");
+			remove("run_length_encoded.txt");
+			remove(TEMP_FILE);
 			close(clientfd);
 
 		}
