@@ -74,7 +74,7 @@ size_t get_file_length(char *file_name) {
     
 }
 
-void huffman_worker(void *data) {
+void *huffman_worker(void *data) {
     worker_struct *my_worker_struct = data;
     char *encoded_file_name = "huffman_encoded.txt";
     char *tree_file_name = "huffman_tree.txt";
@@ -104,7 +104,7 @@ void huffman_worker(void *data) {
     return my_return_struct;
 }
 
-void run_length_worker(void *data) {
+void *run_length_worker(void *data) {
 
 
     stat_struct *my_stat_struct = malloc(sizeof(stat_struct));
@@ -120,7 +120,7 @@ void run_length_worker(void *data) {
 
 }
 
-void l7w_worker(void *data) {
+void *l7w_worker(void *data) {
 
 
     stat_struct *my_stat_struct = malloc(sizeof(stat_struct));
