@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 
@@ -89,14 +90,14 @@ void cleanup() {
 		}
 		close(serverSocket);
 
-		for (int i = 0; i < MAX_CLIENTS; i++) {
-				if (clients[i] != -1) {
-						if (shutdown(clients[i], SHUT_RDWR) != 0) {
-								perror("shutdown(): ");
-						}
-						close(clients[i]);
-				}
-		}
+		// for (int i = 0; i < MAX_CLIENTS; i++) {
+		// 		if (clients[i] != -1) {
+		// 				if (shutdown(clients[i], SHUT_RDWR) != 0) {
+		// 						perror("shutdown(): ");
+		// 				}
+		// 				close(clients[i]);
+		// 		}
+		// }
 }
 
 void *huffman_worker(void *data) {
@@ -170,7 +171,7 @@ void *l7w_worker(void *data) {
 			exit(1);
 		}
 	} else {
-		execl(L7W_EXE, L7W_EXE, 1, my_worker_struct->file_name, encoded_file_name, NULL;)
+		execl(L7W_EXE, L7W_EXE, 1, my_worker_struct->file_name, encoded_file_name, NULL);
 		fprintf(stderr, "%s\n", EXEC_ERR);
 		exit(1);
 	}
@@ -228,7 +229,7 @@ void run_server(char *port) {
 
 			size_t size_of_file = get_response_length(clientfd);
 			int original_fd = open("original.txt", O_CREAT, O_RDWR);
-			read_fd_write_fd(clientfd, original, size_of_file);
+			read_fd_write_fd(clientfd, original_fd, size_of_file);
 
 			pthread_t threads[3];
 			worker_struct *my_worker_struct = malloc(sizeof(worker_struct));
@@ -253,7 +254,7 @@ void run_server(char *port) {
 			//create file with statistics
 			int have_extra_file = best_return_struct.extra_file_name != NULL;
 			//send back best file
-			send_response_length(clientfd, best_return_struct->my_stats.compressed_file_size);
+			send_response_length(clientfd, best_return_struct.my_stats->compressed_file_size);
 			if (have_extra_file) {
 				send_response_length(clientfd, get_file_length(best_return_struct.extra_file_name));
 			} else {
